@@ -3,159 +3,177 @@
 #include "system.h"
 #include "hal.h"
 #include "kprintf.h"
+#include "fat.h"
+#define ENTER   10
+#define ESC		27
+#define PREVIOUS 'q'
+#define NEXT 'e'
 
-#define DIR_LEFT    0
-#define DIR_RIGHT   1
-#define DIR_SAME    2
+int calculateFileIndex();
+void populateFileIndex(int *fileArray, int length);
+void display_root_dir(int *fileArray, int index);
+void display_file(uint8_t * filename, uint8_t * ext);
+void print_n_chars();
 
-#define KEY_LEFT    'a'
-#define KEY_RIGHT   'd'
 
-uint32_t abs( uint32_t );
-uint64_t secs_to_us( uint32_t );
-uint64_t ms_to_us( uint32_t );
-uint32_t systick_diff_to_ms( uint64_t, uint64_t );
+uint8_t buffer[240000]; //107KB (Recall there's 3 pixels per byte + headers)
 
-void thread_1(void){
-    while(1){
-        hal_timer_delay_microsecs( secs_to_us(5) ); //This is a timer delay
-                                                    //All this means is that the "wait time" is not based
-                                                    //on number of instructions but on the counter of a timer.
-                                                    //So it's more accurate.
-
-        kprintf("Thread 1 in Core 1\n");
-    }
-}
-
-void thread_2(void){
-    uint32_t square_length = 40;
-    uint32_t init_x = 3*SYSTEM_SCREEN_WIDTH/2;
-    uint32_t init_y = square_length;
-
-    VideoArea square = { .init = {  .x = init_x,
-                                    .y = init_y
-                                 },
-                         .end = {   .x = init_x + square_length,
-                                    .y = init_y + square_length
-                                }
-                        };
-
-    uint8_t key;
-    uint32_t direction;
-    while(1){
-        //was any key pressed?
-        // (this will read from POWERSHELL, NOT THE EMULATED SCREEN!)
-        if( hal_io_serial_nonblocking_getc( SerialA, &key ) ){
-            if( key == KEY_LEFT ) direction = DIR_LEFT;
-            else direction = DIR_RIGHT;
-        }
-        else
-            direction = DIR_SAME;
-
-        //delete the old square
-        hal_video_put_pixel_area( &square, SYSTEM_SCREEN_BACKGROUND_COLOR );
-
-        //update
-        square.init.y++;
-        square.end.y++;
-        if( direction == DIR_LEFT ){
-            square.init.x -= 10;
-            square.end.x -= 10;
-        }
-        else if( direction == DIR_RIGHT ){
-            square.init.x += 10;
-            square.end.x += 10;
-        }
-
-        //draw new square
-        hal_video_put_pixel_area( &square, VIDEO_COLOR_RED );
-
-        //delay
-        hal_timer_delay_microsecs( ms_to_us(38) );
-    }
-}
-
-volatile uint32_t tick_happened=0;      //Volatile so the compiler does not optimizes
-                                        //thread3's loop.
-
-void thread_3(void){
-    //Thread 3 is just working on doing something on every "tick"
-    //from the microseconds timer started by main.
-     uint32_t prev_t=0, curr_t=0, num_of_ticks=1;
-
-     while(1){
-         if( tick_happened  ){
-             prev_t = curr_t;
-             curr_t = hal_timer_read_count( TimerSysTick );    //SysTick is ARM's System Timer
-                                                               //it counts in microsecond steps
-             if( num_of_ticks > 1 ){
-                    kprintf( "Tick. (count: %d, time since last tick: %d milliseconds)\n",
-                              num_of_ticks,
-                              systick_diff_to_ms(curr_t, prev_t) );
-             }
-             else{
-                 kprintf( "Tick. (count: %d) \n",
-                              num_of_ticks );
-             }
-
-             tick_happened = 0;
-             num_of_ticks++;
-        }
-     }
-}
-
-void timer_handler (void) {
-    //Typically you want to keep interrupt handlers
-    //as short as possible (specially no IO in here!)
-    //
-    //(there's a lot of subtleties with interrupts that
-    // it's better to stay away from if possible... SERIOUSLY, THEY'RE EVIL )
-    //
-    //So we let some thread do what we want to do here instad
-    tick_happened = 1;
-}
-
+FATFile file;
+FATDirectory dir;
 
 int kernel_main (void) {
-
+//win32 disc imager
     system_init();  //This inits everything (should not be removed)
-
-	hal_cpu_thread_start( 1, thread_1 );   // CPU threads are not the typical threads
-	hal_cpu_thread_start( 2, thread_2 );   // from a scheduler. These threads ARE NEVER
-	hal_cpu_thread_start( 3, thread_3 );   // PREEMTED, and they run in THEIR OWN CORE
-                                           // until completion. THEY'RE ALMIGHTY THREADS!
-
-    hal_timer_start_poll( TimerSysTick );   //SysTick is ARM's System Timer
-                                            //It counts in steps of 1 microsecond
-                                            //We let it go free.... we'll poll it later
-                                            //as a measure of time
-
-	hal_timer_start_int( TimerMicroseconds, secs_to_us(3), timer_handler );  //Tick every 3 secs
-
-
+	int index = 0;
+	int numberofRootFiles = calculateFileIndex();
+	int fileArray[numberofRootFiles];
+	populateFileIndex(fileArray, numberofRootFiles);
+	display_root_dir(fileArray, index);
+	uint8_t key;
 	while (1) {
-            hal_timer_delay_microsecs( secs_to_us(6) ); //This is a timer delay
-                                                        //All this means is that the "wait time" is not based
-                                                        //on number of instructions but on the counter of a timer.
-                                                        //So it's more accurate.
-            kprintf("Main Thread in Core 0\n");
+		 if( hal_io_serial_nonblocking_getc( SerialA, &key ) ){
+			 switch(key) {
+				 case ENTER:
+				 	display_file(dir.files[fileArray[index]].name, dir.files[fileArray[index]].ext);
+					 break;
+				 case ESC:
+				 	display_root_dir(fileArray, index);
+					break;
+				case PREVIOUS:
+					if (index > 0)
+					{
+						index--;
+						display_root_dir(fileArray, index);
+					}
+					else
+					{
+						display_root_dir(fileArray, index);
+					}
+					break;
+				case NEXT:
+					if (index < numberofRootFiles - 1)
+					{
+						index++;
+						display_root_dir(fileArray, index);
+					}
+					else
+					{
+						display_root_dir(fileArray, index);
+					}
+					break;
+				default:
+					kprintf("Test: %d", key);
+					break;
+			 }
+        }
 	}
-
-	return 0;
+	return 0;	
 }
 
-uint32_t abs( uint32_t v ){
-    return (v > 0)? v : -v;
+void print_n_chars( uint8_t* str, uint32_t len ){
+	while( len-- > 0 )
+		kprintf( "%c", *str++ );
 }
 
-uint64_t ms_to_us( uint32_t ms ){
-    return ms*1000;
+int calculateFileIndex()
+{
+	fat_read_files_in_dir(&dir, "/");
+	int fileIndex = 0;
+	for (uint32_t i = 0; i < dir.num_of_files; i++)
+	{
+		if (dir.files[i].is_read_only && dir.files[i].is_hidden && dir.files[i].is_volume && dir.files[i].is_system)
+			continue; //Skip VFAT entries
+
+		if (dir.files[i].is_volume || dir.files[i].is_hidden || dir.files[i].is_system)
+			continue; //Skip Volume, Hidden, and System entries
+
+		fileIndex++;
+	}
+	return fileIndex;
 }
 
-uint64_t secs_to_us( uint32_t us ){
-    return us*1000000;
+void populateFileIndex(int *fileArray, int arrayLength)
+{	
+	int index = 0;
+	for (int i = 0; i < dir.num_of_files; i++)
+	{
+		if (dir.files[i].is_read_only && dir.files[i].is_hidden && dir.files[i].is_volume && dir.files[i].is_system)
+			continue; //Skip VFAT entries
+
+		if (dir.files[i].is_volume || dir.files[i].is_hidden || dir.files[i].is_system)
+			continue; //Skip Volume, Hidden, and System entries
+
+		fileArray[index] = i;
+		index++;
+	}
+}
+void display_root_dir(int *fileArray, int index)
+{
+	hal_video_clear(SYSTEM_SCREEN_BACKGROUND_COLOR);
+	//display directory
+	//
+	//   VFAT Long File Names (LFNs) are stored on a FAT file system
+	//	 using a trick: adding additional entries into the directory
+	//	 before the normal file entry. The additional entries are marked
+	//   with the VOLUME LABEL, SYSTEM, HIDDEN, and READ ONLY attributes
+	//	 (yielding 0x0F), which is a combination that is not expected
+	//	 in the MS-DOS environment, and therefore ignored by MS-DOS programs
+	//	 and third-party utilities.
+	//
+	// See https://en.wikipedia.org/wiki/Design_of_the_FAT_file_system#VFAT_long_file_names
+	//
+	kprintf("\n");
+	kprintf("ROOT DIRECTORY:\n\n");
+	int fileIndex = 0;
+
+	for (uint32_t i = 0; i < dir.num_of_files; i++)
+	{
+
+		if (dir.files[i].is_read_only && dir.files[i].is_hidden && dir.files[i].is_volume && dir.files[i].is_system)
+			continue; //Skip VFAT entries
+
+		if (dir.files[i].is_volume || dir.files[i].is_hidden || dir.files[i].is_system)
+			continue; //Skip Volume, Hidden, and System entries
+
+		print_n_chars(dir.files[i].name, FAT_MAX_FILENAME_LENGTH);
+		kprintf(".");
+		print_n_chars(dir.files[i].ext, FAT_MAX_EXT_LENGTH);
+		kprintf("%d KB ", dir.files[i].size / 1024);
+		// Compare the index, and display an arrow if this is the current index.
+		if (fileArray[index] == i)
+		{
+			kprintf("  %s", "--CURRENT CURSOR--");
+		};
+		kprintf("\n");
+		fileIndex++;
+	}
+	hal_video_puts("\n\nPress Q and E to navigate between directories", 2, VIDEO_COLOR_RED);
 }
 
-uint32_t systick_diff_to_ms( uint64_t curr_t, uint64_t prev_t ){
-    return abs(curr_t-prev_t)/1000; //Systick counts in microsecs
+
+void display_file(uint8_t * filename, uint8_t * ext){
+	FATFile file;
+	hal_video_clear( SYSTEM_SCREEN_BACKGROUND_COLOR );
+	if( fat_file_open( &file, filename, ext ) ==  FAT_SUCCESS ){
+		//Read to buffer
+		fat_file_read( &file, buffer );
+		if(ext[0] == 'T' && ext[1] == 'X' && ext[2] == 'T'){
+			print_n_chars(filename, FAT_MAX_FILENAME_LENGTH);
+			kprintf( "." );
+			print_n_chars(ext, FAT_MAX_EXT_LENGTH);
+			kprintf( "(%d KB): \n\n", file.size/1024 );
+			kprintf( "\n" );
+			kprintf( "%s", buffer );
+			kprintf( "\n\n" );
+		} else if(ext[0] == 'B' && ext[1] == 'M' && ext[2] == 'P'){
+			print_n_chars(filename, FAT_MAX_FILENAME_LENGTH);
+			kprintf( "." );
+			print_n_chars(ext, FAT_MAX_EXT_LENGTH);
+			kprintf("(%d KB): \n", file.size/1024 );
+			hal_io_video_draw_image( buffer, 171, 211 );
+			kprintf( "\n\n" );
+		}
+	}else{
+		hal_video_puts( "\nFILE NOT FOUND\n", 2, VIDEO_COLOR_RED );
+	}
 }
