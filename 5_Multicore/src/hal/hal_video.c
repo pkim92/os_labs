@@ -25,6 +25,7 @@
 #include "hal.h"
 #include "fonts.h"
 #include "fb.h"
+#include "bmp.h"
 
 
 void _hal_video_put_byte_raw(uint32_t raw_linear_position, uint8_t);
@@ -62,40 +63,26 @@ uint32_t hal_video_init( void ){
 *  HAL IO Video Draw Image
 */
 void hal_io_video_draw_image( uint8_t* buffer, uint32_t width, uint32_t height ){
-
-	//   ---   CURRENTLY NOT WORKING ---
-	//   THIS NEEDS WORK. I UNDERSTIMATED IT. I NEED TO GO NOW,
-	//   SO I'LL JUST LEAVE IT AS IT'S NOW.
-	//   SEE HERE:
-	//        https://engineering.purdue.edu/ece264/16au/hw/HW13
-	//
     #define TOP_MARGIN 10
 	curr_x = 0;
 	curr_y += (height + TOP_MARGIN);
-	for(uint32_t rgb_i=0x36; rgb_i < width*height*3 + 0x36; rgb_i+=3){
-
-			uint8_t blue =  ((uint8_t)buffer[rgb_i+0]);
-			uint8_t green = ((uint8_t)buffer[rgb_i+1]);
-			uint8_t red =  ((uint8_t)buffer[rgb_i+2]);
-            uint8_t alpha =  0xFF;
-
-            uint32_t rgba = alpha<<24 | blue<<16 | green<<8 | red;
-
-            //remove padding???
-            //
-            //I feel this will remove all black pizel, but
-            //I guess i"ll find out in the future
-            if( rgba!=0xFF000000 )
-                put_pixel_raw( x_y_to_raw(curr_x,curr_y), rgba );
-
-			 if( curr_x >= width  ){
-				 curr_x = 0;
-				 curr_y -= 1;
-		 	 }
-             else
-                 curr_x += 1;
+	RGB_COLOR color;
+	// open the the bmp image using hex editor, you will see why we need this
+	uint32_t padding = 4 - (width * sizeof(RGB_COLOR)) % 4;
+	uint32_t rgb_i = 0x36;
+	for( uint32_t i = 0; i < height; i++){
+			while (curr_x < width) {
+				memcpy(&color, buffer + rgb_i, sizeof(RGB_COLOR));
+				uint8_t alpha =  0xFF;
+				uint32_t rgba = alpha<<24 | color.blue<<16 | color.green<<8 | color.red;
+				put_pixel_raw( x_y_to_raw(curr_x, curr_y), rgba );
+				curr_x += 1;
+				rgb_i += 3;
+			}
+			rgb_i += padding;
+			curr_x = 0;
+			curr_y -= 1;
 		}
-
 		curr_x = X_ORIGIN;
 		curr_y += height;
 }
