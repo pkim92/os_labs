@@ -4,6 +4,7 @@
 #include "hal.h"
 #include "kprintf.h"
 #include "fat.h"
+#include "bmp.h"
 #define ENTER   10
 #define ESC		27
 #define PREVIOUS 'q'
@@ -166,11 +167,13 @@ void display_file(uint8_t * filename, uint8_t * ext){
 			kprintf( "%s", buffer );
 			kprintf( "\n\n" );
 		} else if(ext[0] == 'B' && ext[1] == 'M' && ext[2] == 'P'){
+			BMP_HEADER header;
+			memcpy(&header, buffer, sizeof(BMP_HEADER));
 			print_n_chars(filename, FAT_MAX_FILENAME_LENGTH);
 			kprintf( "." );
 			print_n_chars(ext, FAT_MAX_EXT_LENGTH);
 			kprintf("(%d KB): \n", file.size/1024 );
-			hal_io_video_draw_image( buffer, 171, 211 );
+			hal_io_video_draw_image( buffer, header.width_px, header.height_px );
 			kprintf( "\n\n" );
 		}
 	}else{
