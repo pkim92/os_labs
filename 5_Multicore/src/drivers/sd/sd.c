@@ -180,7 +180,7 @@ int sd_cmd(unsigned int code, unsigned int arg)
         code &= ~CMD_NEED_APP;
     }
     if(sd_status(SR_CMD_INHIBIT)) { kprintf_debug("ERROR: EMMC busy\n"); sd_err= SD_TIMEOUT;return 0;}
-    kprintf_debug("EMMC: Sending command ");kprintf_debug( "%d", code);kprintf_debug(" arg ");kprintf_debug( "%d", arg);kprintf_debug("\n");
+    // kprintf_debug("EMMC: Sending command ");kprintf_debug( "%d", code);kprintf_debug(" arg ");kprintf_debug( "%d", arg);kprintf_debug("\n");
     *EMMC_INTERRUPT=*EMMC_INTERRUPT; *EMMC_ARG1=arg; *EMMC_CMDTM=code;
     if(code==CMD_SEND_OP_COND) delays_wait_microsecs(1000); else
     if(code==CMD_SEND_IF_COND || code==CMD_APP_CMD) delays_wait_microsecs(100);

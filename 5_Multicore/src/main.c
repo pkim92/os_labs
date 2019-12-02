@@ -4,6 +4,7 @@
 #include "hal.h"
 #include "kprintf.h"
 #include "fat.h"
+#include "bmp.h"
 #define ENTER   10
 #define ESC		27
 #define PREVIOUS 'q'
@@ -207,6 +208,7 @@ void display_root_dir(int *fileArray, int index)
 
 
 void display_file(uint8_t * filename, uint8_t * ext){
+<<<<<<< HEAD
     //FATFile file;
     hal_video_clear( SYSTEM_SCREEN_BACKGROUND_COLOR );
 
@@ -272,4 +274,32 @@ void display_file(uint8_t * filename, uint8_t * ext){
     }else{
         hal_video_puts( "\nFILE NOT FOUND\n", 2, VIDEO_COLOR_RED );
     }
+=======
+	FATFile file;
+	hal_video_clear( SYSTEM_SCREEN_BACKGROUND_COLOR );
+	if( fat_file_open( &file, filename, ext ) ==  FAT_SUCCESS ){
+		//Read to buffer
+		fat_file_read( &file, buffer );
+		if(ext[0] == 'T' && ext[1] == 'X' && ext[2] == 'T'){
+			print_n_chars(filename, FAT_MAX_FILENAME_LENGTH);
+			kprintf( "." );
+			print_n_chars(ext, FAT_MAX_EXT_LENGTH);
+			kprintf( "(%d KB): \n\n", file.size/1024 );
+			kprintf( "\n" );
+			kprintf( "%s", buffer );
+			kprintf( "\n\n" );
+		} else if(ext[0] == 'B' && ext[1] == 'M' && ext[2] == 'P'){
+			BMP_HEADER header;
+			memcpy(&header, buffer, sizeof(BMP_HEADER));
+			print_n_chars(filename, FAT_MAX_FILENAME_LENGTH);
+			kprintf( "." );
+			print_n_chars(ext, FAT_MAX_EXT_LENGTH);
+			kprintf("(%d KB): \n", file.size/1024 );
+			hal_io_video_draw_image( buffer, header.width_px, header.height_px );
+			kprintf( "\n\n" );
+		}
+	}else{
+		hal_video_puts( "\nFILE NOT FOUND\n", 2, VIDEO_COLOR_RED );
+	}
+>>>>>>> 868d0da13a3b6fc8cce95a69fd196e5942249f95
 }
