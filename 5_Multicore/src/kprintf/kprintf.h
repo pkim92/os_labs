@@ -49,6 +49,7 @@
 void kprintf_hex_dump( uint8_t*, uint32_t, uint32_t, uint32_t);
 
 void kprintf(const char *format, ...);
+void kprintf_file(const char *format, ...);
 void kprintf_debug(const char *format, ...);
 
 int snprintf(char *buf, size_t size, const char *format, ...);

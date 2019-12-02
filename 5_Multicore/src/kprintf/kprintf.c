@@ -55,7 +55,10 @@ static _Bool isdigit(unsigned char c) {
 }
 
 void local_putc( uint8_t c ){
-    hal_video_putc( c, SYSTEM_SCREEN_TEXT_SIZE, SYSTEM_SCREEN_TEXT_COLOR );
+    hal_video_putc( c, SYSTEM_SCREEN_TEXT_SIZE_DIR, SYSTEM_SCREEN_TEXT_COLOR );
+}
+void local_putc_file( uint8_t c ){
+    hal_video_putc( c, SYSTEM_SCREEN_TEXT_SIZE_FILE, SYSTEM_SCREEN_TEXT_COLOR );
 }
 
 void debug_putc( uint8_t c ){
@@ -66,6 +69,12 @@ void kprintf(const char *format, ...) {
     va_list args;
     va_start(args, format);
     vcprintf((vcprintf_callback_t)local_putc, NULL, format, args);
+    va_end(args);
+}
+void kprintf_file(const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    vcprintf((vcprintf_callback_t)local_putc_file, NULL, format, args);
     va_end(args);
 }
 

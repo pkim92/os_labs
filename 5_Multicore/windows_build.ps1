@@ -4,7 +4,7 @@
 #	 (edit path to GCC and QEMU here)
 #>
 
-$GCC_BIN_PATH = "C:\Users\a01169587\Downloads\gcc-arm-8.3-2019.03-i686-mingw32-aarch64-elf.tar\gcc-arm-8.3-2019.03-i686-mingw32-aarch64-elf\bin"
+$GCC_BIN_PATH = "D:\workplace\term4\COMP4735\gcc-arm-8.3-2019.03-i686-mingw32-aarch64-elf\bin"
 $QEMU_BIN_PATH = "C:\Program Files\qemu"
 
 

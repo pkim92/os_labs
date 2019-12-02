@@ -14,7 +14,8 @@ void system_init(void);
 //Screen
 #define SYSTEM_SCREEN_BACKGROUND_COLOR       0x232424
 #define SYSTEM_SCREEN_TEXT_COLOR             VIDEO_COLOR_WHITE
-#define SYSTEM_SCREEN_TEXT_SIZE              1
+#define SYSTEM_SCREEN_TEXT_SIZE_DIR          1   
+#define SYSTEM_SCREEN_TEXT_SIZE_FILE         3
 #define SYSTEM_SCREEN_WIDTH                  1280
 #define SYSTEM_SCREEN_HEIGHT                 768
 #define SYSTEM_SCREEN_DEPTH                  32
