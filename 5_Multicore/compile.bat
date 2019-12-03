@@ -20,6 +20,7 @@ set "libflags=-lc -lm -lgcc"
     -I ./src/drivers/sd ^
     -I ./src/drivers/uart ^
     -I ./src/fat ^
+    -I ./src/bmp ^
     -I ./src/hal ^
     -I ./src/kprintf ^
     -I ./src/smartstart ^

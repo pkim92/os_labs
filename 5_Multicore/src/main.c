@@ -1,16 +1,21 @@
-#include <stdbool.h>		// C standard needed for bool
-#include <stdint.h>			// C standard for uint8_t, uint16_t, uint32_t etc
+#include <stdbool.h>        // C standard needed for bool
+#include <stdint.h>         // C standard for uint8_t, uint16_t, uint32_t etc
+#include <string.h>
 #include "system.h"
 #include "hal.h"
 #include "kprintf.h"
 #include "fat.h"
 #include "bmp.h"
 #define ENTER   10
-#define ESC		27
-#define PREVIOUS 'q'
-#define NEXT 'e'
+#define ESC     27
+#define PREVIOUS 'w'
+#define PREVIOUS_UPPER 'W'
+#define NEXT 's'
+#define NEXT_UPPER 'S'
 #define NEXT_LINE 'l'
+#define NEXT_LINE_UPPER 'L'
 #define PREVIOUS_LINE 'm'
+#define PREVIOUS_LINE_UPPER 'M'
 
 int calculateFileIndex();
 void populateFileIndex(int *fileArray, int length);
@@ -48,29 +53,21 @@ int kernel_main (void) {
                     display_root_dir(fileArray, index);
                     break;
                 case PREVIOUS:
-                    if (index > 0)
-                    {
-                        index--;
-                        display_root_dir(fileArray, index);
-                    }
-                    else
-                    {
-                        display_root_dir(fileArray, index);
-                    }
+                    if (index > 0) index--;
+                    display_root_dir(fileArray, index);
+                    break;
+                case PREVIOUS_UPPER:
+                    if (index > 0) index--;
+                    display_root_dir(fileArray, index);
                     break;
                 case NEXT:
-                    if (index < numberofRootFiles - 1)
-                    {
-                        index++;
-                        display_root_dir(fileArray, index);
-                    }
-                    else
-                    {
-                        display_root_dir(fileArray, index);
-                    }
+                    if (index < numberofRootFiles - 1) index++;
+                    display_root_dir(fileArray, index);
+                case NEXT_UPPER:
+                    if (index < numberofRootFiles - 1) index++;
+                    display_root_dir(fileArray, index);
                     break;
                 default:
-                    kprintf("Test: %d", key);
                     break;
             }
         }
@@ -121,13 +118,13 @@ int count_line_chars(uint8_t* buffer,int numberOfLine,int maxLine){
     }
 }
 int getFileLineSize(uint8_t* buffer){
-	int max = 0;
-	while(*buffer++){
-		if(*buffer == '\n'){
-			max++;
-		}
-	}
-	return max;
+    int max = 0;
+    while(*buffer++){
+        if(*buffer == '\n'){
+            max++;
+        }
+    }
+    return max;
 }
 
 int calculateFileIndex()
@@ -169,12 +166,12 @@ void display_root_dir(int *fileArray, int index)
     //display directory
     //
     //   VFAT Long File Names (LFNs) are stored on a FAT file system
-    //	 using a trick: adding additional entries into the directory
-    //	 before the normal file entry. The additional entries are marked
+    //   using a trick: adding additional entries into the directory
+    //   before the normal file entry. The additional entries are marked
     //   with the VOLUME LABEL, SYSTEM, HIDDEN, and READ ONLY attributes
-    //	 (yielding 0x0F), which is a combination that is not expected
-    //	 in the MS-DOS environment, and therefore ignored by MS-DOS programs
-    //	 and third-party utilities.
+    //   (yielding 0x0F), which is a combination that is not expected
+    //   in the MS-DOS environment, and therefore ignored by MS-DOS programs
+    //   and third-party utilities.
     //
     // See https://en.wikipedia.org/wiki/Design_of_the_FAT_file_system#VFAT_long_file_names
     //
@@ -203,25 +200,24 @@ void display_root_dir(int *fileArray, int index)
         kprintf("\n");
         fileIndex++;
     }
-    hal_video_puts("\n\nPress Q and E to navigate between directories", 2, VIDEO_COLOR_RED);
+    hal_video_puts("\n\nPress W and S to navigate between directories", 2, VIDEO_COLOR_RED);
 }
 
 
 void display_file(uint8_t * filename, uint8_t * ext){
-<<<<<<< HEAD
     //FATFile file;
     hal_video_clear( SYSTEM_SCREEN_BACKGROUND_COLOR );
 
     int numberOfLine = 0;
-	
+    
     if( fat_file_open( &file, filename, ext ) ==  FAT_SUCCESS ){
         //Read to buffer
         fat_file_read( &file, buffer );
         if(ext[0] == 'T' && ext[1] == 'X' && ext[2] == 'T'){
-			int lineSizeInFile = getFileLineSize(buffer);
+            int lineSizeInFile = getFileLineSize(buffer);
             uint8_t key;
-			hal_video_puts("\n\nPress L and M to increase and decrease line", 1, VIDEO_COLOR_RED);
-			hal_video_puts("\n\nPress others to back dir", 1, VIDEO_COLOR_RED);
+            hal_video_puts("\n\nPress L and M to increase and decrease line", 1, VIDEO_COLOR_RED);
+            hal_video_puts("\n\nPress ESC to return to dir", 1, VIDEO_COLOR_RED);
             while (1) {
                 if (hal_io_serial_nonblocking_getc(SerialA, &key)) {
                     hal_video_clear( SYSTEM_SCREEN_BACKGROUND_COLOR );
@@ -229,19 +225,46 @@ void display_file(uint8_t * filename, uint8_t * ext){
                     switch (key) {
                         case NEXT_LINE:             //l
                             numberOfLine++;
-							if(numberOfLine == lineSizeInFile*2+maxLine){
-								numberOfLine--;
-							}else{
-								if(numberOfLine>maxLine){
-									int test = count_line_chars(buffer,numberOfLine,maxLine-1);
-									print_n_chars_file(buffer+test,numberOfLine);
-								}else{
-									print_n_chars_file(buffer,numberOfLine);
-								}
-							}
-
+                            if(numberOfLine == lineSizeInFile*2+maxLine){
+                                numberOfLine--;
+                            }else{
+                                if(numberOfLine>maxLine){
+                                    int test = count_line_chars(buffer,numberOfLine,maxLine-1);
+                                    print_n_chars_file(buffer+test,numberOfLine);
+                                }else{
+                                    print_n_chars_file(buffer,numberOfLine);
+                                }
+                            }
+                            break;
+                        case NEXT_LINE_UPPER:
+                            numberOfLine++;
+                            if(numberOfLine == lineSizeInFile*2+maxLine){
+                                numberOfLine--;
+                            }else{
+                                if(numberOfLine>maxLine){
+                                    int test = count_line_chars(buffer,numberOfLine,maxLine-1);
+                                    print_n_chars_file(buffer+test,numberOfLine);
+                                }else{
+                                    print_n_chars_file(buffer,numberOfLine);
+                                }
+                            }
                             break;
                         case PREVIOUS_LINE:
+                            numberOfLine--;//m
+                            if(numberOfLine>maxLine){
+                                int test2 = count_line_chars(buffer,numberOfLine-1,maxLine-1);
+                                print_n_chars_file(buffer+test2,numberOfLine);
+                            }else{
+                                if (numberOfLine > 1) {
+                                    print_n_chars_file(buffer,numberOfLine);
+                                    kprintf("\n");
+                                } else {
+                                    numberOfLine = 1;
+                                    kprintf("No more line");
+                                }
+                            }
+                            break;
+                        case PREVIOUS_LINE_UPPER:
                             numberOfLine--;//m
                             if(numberOfLine>maxLine){
                                 int test2 = count_line_chars(buffer,numberOfLine-1,maxLine-1);
@@ -259,47 +282,22 @@ void display_file(uint8_t * filename, uint8_t * ext){
                         default:
                             return;
                     }
-					hal_video_puts("\n\nPress L and M to increase and decrease line", 1, VIDEO_COLOR_RED);
-					hal_video_puts("\n\nPress others to back dir", 1, VIDEO_COLOR_RED);
+                    hal_video_puts("\n\nPress L and M to increase and decrease line", 1, VIDEO_COLOR_RED);
+                    hal_video_puts("\n\nPress ESC to return to dir", 1, VIDEO_COLOR_RED);
                 }
             }
         } else if(ext[0] == 'B' && ext[1] == 'M' && ext[2] == 'P'){
+            BMP_HEADER header;
+            memcpy(&header, buffer, sizeof(BMP_HEADER));
             print_n_chars(filename, FAT_MAX_FILENAME_LENGTH);
             kprintf( "." );
             print_n_chars(ext, FAT_MAX_EXT_LENGTH);
             kprintf("(%d KB): \n", file.size/1024 );
-            hal_io_video_draw_image( buffer, 171, 211 );
+            hal_io_video_draw_image( buffer, header.width_px, header.height_px );
             kprintf( "\n\n" );
         }
+        hal_video_puts("\n\nPress ESC to return to dir", 1, VIDEO_COLOR_RED);
     }else{
         hal_video_puts( "\nFILE NOT FOUND\n", 2, VIDEO_COLOR_RED );
     }
-=======
-	FATFile file;
-	hal_video_clear( SYSTEM_SCREEN_BACKGROUND_COLOR );
-	if( fat_file_open( &file, filename, ext ) ==  FAT_SUCCESS ){
-		//Read to buffer
-		fat_file_read( &file, buffer );
-		if(ext[0] == 'T' && ext[1] == 'X' && ext[2] == 'T'){
-			print_n_chars(filename, FAT_MAX_FILENAME_LENGTH);
-			kprintf( "." );
-			print_n_chars(ext, FAT_MAX_EXT_LENGTH);
-			kprintf( "(%d KB): \n\n", file.size/1024 );
-			kprintf( "\n" );
-			kprintf( "%s", buffer );
-			kprintf( "\n\n" );
-		} else if(ext[0] == 'B' && ext[1] == 'M' && ext[2] == 'P'){
-			BMP_HEADER header;
-			memcpy(&header, buffer, sizeof(BMP_HEADER));
-			print_n_chars(filename, FAT_MAX_FILENAME_LENGTH);
-			kprintf( "." );
-			print_n_chars(ext, FAT_MAX_EXT_LENGTH);
-			kprintf("(%d KB): \n", file.size/1024 );
-			hal_io_video_draw_image( buffer, header.width_px, header.height_px );
-			kprintf( "\n\n" );
-		}
-	}else{
-		hal_video_puts( "\nFILE NOT FOUND\n", 2, VIDEO_COLOR_RED );
-	}
->>>>>>> 868d0da13a3b6fc8cce95a69fd196e5942249f95
 }
