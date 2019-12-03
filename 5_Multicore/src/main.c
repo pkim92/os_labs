@@ -63,6 +63,7 @@ int kernel_main (void) {
                 case NEXT:
                     if (index < numberofRootFiles - 1) index++;
                     display_root_dir(fileArray, index);
+                    break;
                 case NEXT_UPPER:
                     if (index < numberofRootFiles - 1) index++;
                     display_root_dir(fileArray, index);
